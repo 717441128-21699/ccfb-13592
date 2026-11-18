@@ -1,0 +1,93 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>纸卷打孔排版工具</title>
+  <style>
+    * { box-sizing: border-box; }
+    body { margin: 0; font: 13px/1.5 system-ui, "Microsoft YaHei", sans-serif; background: #1e1e1e; color: #ddd; height: 100vh; display: flex; flex-direction: column; overflow: hidden; }
+    header { padding: 8px 14px; background: #2d2d30; border-bottom: 1px solid #111; display: flex; gap: 14px; align-items: center; flex-wrap: wrap; }
+    header h1 { font-size: 15px; margin: 0; font-weight: 600; }
+    main { flex: 1; display: flex; min-height: 0; }
+    #panel { width: 300px; min-width: 300px; background: #252526; border-right: 1px solid #111; padding: 12px; overflow-y: auto; }
+    #canvas-wrap { flex: 1; position: relative; min-width: 0; }
+    canvas { display: block; cursor: grab; }
+    canvas:active { cursor: grabbing; }
+    fieldset { border: 1px solid #3c3c3c; border-radius: 6px; margin: 0 0 12px; padding: 8px 10px; }
+    legend { padding: 0 6px; color: #9ab; font-size: 12px; }
+    label { display: flex; justify-content: space-between; align-items: center; gap: 8px; margin: 4px 0; }
+    label span { color: #aaa; white-space: nowrap; }
+    input[type=number], select { width: 110px; background: #1b1b1c; color: #ddd; border: 1px solid #3c3c3c; border-radius: 4px; padding: 3px 6px; }
+    input[type=file] { width: 100%; color: #aaa; }
+    button { background: #0e639c; color: #fff; border: 0; border-radius: 4px; padding: 6px 12px; cursor: pointer; margin: 2px 4px 2px 0; }
+    button:hover { background: #1177bb; }
+    button.secondary { background: #3c3c3c; }
+    #status { padding: 6px 14px; background: #2d2d30; border-top: 1px solid #111; font: 12px monospace; color: #9c9; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    #warnings { color: #e8b45a; margin: 8px 0; white-space: pre-wrap; font-size: 12px; }
+    #stats { color: #8bc; font-size: 12px; margin: 6px 0; white-space: pre-wrap; }
+    .row { display: flex; gap: 6px; flex-wrap: wrap; }
+  </style>
+  <script type="module" crossorigin src="/assets/index-Bq8AJDZe.js"></script>
+</head>
+<body>
+  <header>
+    <h1>🎹 自动演奏钢琴 · 纸卷打孔排版</h1>
+    <div class="row">
+      <button id="btn-fit" class="secondary">适配纸宽</button>
+      <button id="btn-actual" class="secondary">1:1 实际大小</button>
+      <button id="btn-zoom-in" class="secondary">放大 +</button>
+      <button id="btn-zoom-out" class="secondary">缩小 −</button>
+    </div>
+    <div class="row">
+      <button id="btn-csv">导出 CSV</button>
+      <button id="btn-json">导出 JSON</button>
+      <button id="btn-dxf">导出 DXF(冲床)</button>
+    </div>
+  </header>
+  <main>
+    <div id="panel">
+      <fieldset>
+        <legend>1. 导入 MIDI</legend>
+        <input type="file" id="file" accept=".mid,.midi" />
+        <button id="btn-demo" class="secondary" style="margin-top:6px">载入示例曲</button>
+        <div id="midi-info" style="color:#8bc;margin-top:6px"></div>
+      </fieldset>
+      <fieldset>
+        <legend>2. 纸卷规格</legend>
+        <label><span>规格预设</span>
+          <select id="preset">
+            <option value="88">88音标准卷</option>
+            <option value="65">65音卷</option>
+          </select>
+        </label>
+        <label><span>音域下限</span><input type="number" id="lowNote" /></label>
+        <label><span>音域上限</span><input type="number" id="highNote" /></label>
+        <label><span>每英寸孔位</span><input type="number" id="holesPerInch" step="0.5" /></label>
+        <label><span>纸宽 mm</span><input type="number" id="paperWidthMm" /></label>
+        <label><span>侧边距 mm</span><input type="number" id="sideMarginMm" step="0.5" /></label>
+        <label><span>孔宽 mm</span><input type="number" id="holeWidthMm" step="0.1" /></label>
+        <label><span>纸速标号</span><input type="number" id="tempoMark" /></label>
+        <label><span>最小纸桥 mm</span><input type="number" id="minBridgeMm" step="0.1" /></label>
+        <label><span>最小孔长 mm</span><input type="number" id="minHoleLenMm" step="0.1" /></label>
+        <label><span>纵向步距 mm</span><input type="number" id="snapMm" step="0.05" /></label>
+        <label><span>力度分界音</span><input type="number" id="splitPitch" /></label>
+        <label><span>力度档数</span><input type="number" id="dynLevels" min="1" max="8" /></label>
+      </fieldset>
+      <fieldset>
+        <legend>3. 排版结果</legend>
+        <div id="stats">尚未排版</div>
+        <div id="warnings"></div>
+        <button id="btn-relayout" style="margin-top:6px">重新排版</button>
+      </fieldset>
+      <fieldset>
+        <legend>显示校准</legend>
+        <label><span>屏幕 DPI</span><input type="number" id="dpi" /></label>
+        <div style="color:#888;font-size:11px">"1:1 实际大小"按此 DPI 换算;用尺子量屏幕校准后,纸卷即按真实尺寸显示。</div>
+      </fieldset>
+    </div>
+    <div id="canvas-wrap"><canvas id="roll"></canvas></div>
+  </main>
+  <div id="status">就绪 — 请导入 MIDI 文件</div>
+</body>
+</html>
